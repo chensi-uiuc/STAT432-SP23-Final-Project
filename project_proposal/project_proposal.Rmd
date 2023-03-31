@@ -1,0 +1,109 @@
+---
+title: "Project Proposal"
+author: "Chen Si (chensi3), Yuchen Cao (yuchenc5)"
+date: "2023-03-31"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read in Dataset
+```{r}
+df = read.csv("../dataset/players_20_edited.csv")
+# View(df)
+
+dim(df)
+```
+**Report**  
+The dataset that we use include 16242 players and 77 features for each of them.  
+
+## Visualize  
+Here we visualize the dataset in different ways to provide the preliminary visualization of the data.  
+  
+### Overall scores 
+```{r fig.height = 15, fig.width = 16}
+caret::featurePlot(
+  x=df[,16:18],
+  y=df[,8],
+  plot="pairs",
+  scales=list(
+    x=list(relation="free"),
+    y=list(relation="free")
+  )
+)
+
+caret::featurePlot(
+  x=df[,19:21],
+  y=df[,8],
+  plot="pairs",
+  scales=list(
+    x=list(relation="free"),
+    y=list(relation="free")
+  )
+)
+```
+
+```{r fig.height = 10, fig.width = 12}
+library(ggplot2)
+
+ggplot(df, aes(x=overall)) + 
+  geom_histogram(colour="black", fill="lightblue")
+```
+
+```{r fig.width=8, fig.height=8}
+caret::featurePlot(
+  x=df[,3:5],
+  y=df[,8],
+  plot="pairs",
+  scales=list(
+    x=list(relation="free"),
+    y=list(relation="free")
+  )
+)
+```
+
+```{r}
+# df$nationality = as.factor(df$nationality)
+# 
+# freq_nations = sort(table(df$nationality), decreasing=TRUE)[1:10]
+# print(typeof(freq_nations[1]))
+
+frequent_nations= c("England",'Germany','Spain','France','Argentina',
+                    'Brazil','Italy','Colombia','Japan','Netherlands')
+
+df_nation_limit = df[df$nationality %in% frequent_nations, ]
+
+ggplot(df_nation_limit, aes(x=overall, color=nationality,
+                            fill=nationality)) +
+  geom_histogram(alpha=0.5, position = "identity") + 
+  ggtitle("Overall Scores of Top 10 Frequent Nations")
+```
+
+```{r}
+library(hwordcloud)
+library(wordcloud2)
+nations = df$nationality
+
+nation_count <- data.frame(
+  nation = unique(nations),  # Unique nation names
+  count = sapply(unique(nations), function(x) sum(nations == x))
+)
+
+hw=hwordcloud(text = nation_count$nation, size = log(nation_count$count),
+           width = "100%", height = "120%")
+
+saveWidget(hw,"1.html",selfcontained = F)
+webshot::webshot("1.html","1.png",vwidth = 1992, vheight = 1744, delay =10)
+```
+
+
+
+
+
+
+
+
