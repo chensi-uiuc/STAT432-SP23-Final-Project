@@ -1,0 +1,326 @@
+---
+title: "classification"
+author: "Chen Si (chensi3), Yuchen Cao (yuchenc5)"
+date: "2023-04-30"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+```{r}
+library(caret)
+library(kernlab)
+library(ggplot2)
+library(lattice)
+library(tibble)
+```
+
+# Read Data
+
+```{r}
+fifa = read.csv("../dataset/players_20_edited.csv")
+```
+
+```{r}
+colnames(fifa)
+```
+
+### Create st_or_cb column
+```{r}
+fifa$st_or_cb <- with(fifa, ifelse(st > cb, 'ST', 'CB'))
+fifa$st_or_cb = as.factor(fifa$st_or_cb)
+summary(fifa$st_or_cb)
+```
+
+### Train-Test Split 8-2
+```{r}
+set.seed(432)
+
+N=dim(fifa)[1]
+cat("There are ", N, "players in the dataset\n")
+all.idx=1:N
+
+trn.idx = sample(all.idx, size=round(0.8*N))
+tst.idx = all.idx[is.na(pmatch(all.idx,trn.idx))]
+
+fifa.trn = fifa[trn.idx,]
+fifa.tst = fifa[tst.idx,]
+cat("Train Set Size:", dim(fifa.trn)[1], "\n")
+cat("Test Set Size:", dim(fifa.tst)[1], "\n")
+```
+
+### Some Famous Players
+```{r}
+test.st.1 = 9 # Kylian Mbappé
+test.st.2 = 35 # Heung-min Son
+test.st.3 = 318 # Wout Weghorst
+
+test.cb.1 = 24 # Gerard Piqué Bernabéu
+test.cb.2 = 73 # Clément Lenglet
+test.cb.3 = 185 # David Luiz
+
+test.lb = 1132 # Kieran Tierney
+test.rb = 2410 # Tomiyasu
+test.lw = 6034 # Gabriel Martinelli
+test.rw = 8971 # Bukayo Saka
+
+test.confus.1 = 296 # Granit Xhaka
+test.confus.2 = 28 # Toni Kroos
+test.confus.3 = 34 # Casemiro
+test.confus.4 = 221 # Thomas Partey
+test.confus.5 = 64 # Frenkie de Jong
+test.confus.6 = 67 # Niklas Süle
+test.confus.7 = 68 # Sergej Milinković-Savić
+test.confus.8 = 69 # Rodri
+
+test.players = fifa[c(test.st.1,test.st.2,test.st.3,
+                      test.cb.1,test.cb.2,test.cb.3,
+                      test.lb,test.rb,test.lw,test.rw,
+                      test.confus.1,test.confus.2,test.confus.3,test.confus.4,
+                      test.confus.5,test.confus.6,test.confus.7,test.confus.8),]
+test.players
+```
+
+
+
+
+# Simple SVM
+### Train
+```{r}
+
+train_control <- trainControl(method="cv", number=10)
+
+formula = st_or_cb ~ age + height_cm + weight_kg + 
+                    shooting + shooting + passing + dribbling + 
+                    defending + physic + attacking_crossing +
+                    attacking_finishing + attacking_heading_accuracy +
+                    attacking_short_passing + attacking_volleys +
+                    skill_dribbling + skill_curve + skill_fk_accuracy +
+                    skill_long_passing + skill_ball_control +
+                    movement_acceleration + movement_sprint_speed +
+                    movement_agility + movement_reactions +
+                    movement_balance + power_shot_power + 
+                    power_jumping + power_stamina + power_strength +
+                    power_long_shots + mentality_aggression +
+                    mentality_interceptions + mentality_positioning +
+                    mentality_vision + mentality_penalties +
+                    mentality_composure + defending_marking +
+                    defending_standing_tackle + defending_sliding_tackle
+
+simple.svm <- train(formula,
+              data = fifa.trn, method = "svmLinear",
+              trControl = train_control,
+              preProcess = c("center","scale"))
+
+simple.svm
+```
+
+### Test - Test Set
+```{r}
+predict.res = predict(simple.svm, newdata=fifa.tst)
+
+show.predict = data.frame(name=fifa.tst$short_name,
+                          score_st = fifa.tst$st,
+                          score_cb = fifa.tst$cb,
+                          real_class = fifa.tst$st_or_cb,
+                          pred_class = predict.res)
+head(show.predict)
+
+confusionMatrix(predict.res, fifa.tst$st_or_cb)
+```
+
+### Test - Famous Players
+```{r}
+predict.res = predict(simple.svm, newdata=test.players)
+show.predict = data.frame(name=test.players$short_name,
+                          score_st = test.players$st,
+                          score_cb = test.players$cb,
+                          real_class = test.players$st_or_cb,
+                          pred_class = predict.res)
+show.predict
+
+confusionMatrix(predict.res, test.players$st_or_cb)
+```
+
+
+# Tuned Linear SVM 
+### Train
+```{r}
+train_control <- trainControl(method="cv", number=10)
+
+formula = st_or_cb ~ age + height_cm + weight_kg + 
+                    shooting + shooting + passing + dribbling + 
+                    defending + physic + attacking_crossing +
+                    attacking_finishing + attacking_heading_accuracy +
+                    attacking_short_passing + attacking_volleys +
+                    skill_dribbling + skill_curve + skill_fk_accuracy +
+                    skill_long_passing + skill_ball_control +
+                    movement_acceleration + movement_sprint_speed +
+                    movement_agility + movement_reactions +
+                    movement_balance + power_shot_power + 
+                    power_jumping + power_stamina + power_strength +
+                    power_long_shots + mentality_aggression +
+                    mentality_interceptions + mentality_positioning +
+                    mentality_vision + mentality_penalties +
+                    mentality_composure + defending_marking +
+                    defending_standing_tackle + defending_sliding_tackle
+
+linear.svm <- train(formula,
+              data = fifa.trn, method = "svmLinear",
+              trControl = train_control,
+              preProcess = c("center","scale"),
+              tuneGrid = expand.grid(C = c(0.01,0.1,0.5,0.75,1,2,5,10,50)))
+
+linear.svm
+```
+
+```{r}
+plot(linear.svm)
+```
+
+```{r}
+linear.best.C = linear.svm$bestTune$C
+
+linear.best.res<-as_tibble(linear.svm$results[which.max(linear.svm$results[,2]),])
+linear.best.res
+
+best.linear.svm = linear.svm$finalModel
+best.linear.svm
+```
+
+### Test - Test Set
+```{r}
+predict.res = predict(linear.svm, newdata=fifa.tst)
+
+show.predict = data.frame(name=fifa.tst$short_name,
+                          score_st = fifa.tst$st,
+                          score_cb = fifa.tst$cb,
+                          real_class = fifa.tst$st_or_cb,
+                          pred_class = predict.res)
+head(show.predict)
+
+confusionMatrix(predict.res, fifa.tst$st_or_cb)
+```
+
+### Test - Famous Player
+```{r}
+predict.res = predict(linear.svm, newdata=test.players)
+
+show.predict = data.frame(name=test.players$short_name,
+                          score_st = test.players$st,
+                          score_cb = test.players$cb,
+                          real_class = test.players$st_or_cb,
+                          pred_class = predict.res)
+show.predict
+
+confusionMatrix(predict.res, test.players$st_or_cb)
+```
+
+
+# Radial SVM
+###Train
+```{r}
+train_control <- trainControl(method="cv", number=10)
+
+radial.svm <- train(formula,
+              data = fifa, method = "svmRadial",
+              trControl = train_control,
+              preProcess = c("center","scale"),
+              tuneLength = 8)
+```
+
+```{r}
+plot(radial.svm)
+```
+
+```{r}
+radial.best.C = radial.svm$bestTune$C
+
+radial.best.res<-as_tibble(radial.svm$results[which.max(radial.svm$results[,2]),])
+radial.best.res
+
+best.radial.svm = radial.svm$finalModel
+best.radial.svm
+```
+
+### Test - Test Set
+```{r}
+predict.res = predict(radial.svm, newdata=fifa.tst)
+
+show.predict = data.frame(name=fifa.tst$short_name,
+                          score_st = fifa.tst$st,
+                          score_cb = fifa.tst$cb,
+                          real_class = fifa.tst$st_or_cb,
+                          pred_class = predict.res)
+head(show.predict)
+
+confusionMatrix(predict.res, fifa.tst$st_or_cb)
+```
+
+### Test - Famous Player
+```{r}
+predict.res = predict(radial.svm, newdata=test.players)
+
+show.predict = data.frame(name=test.players$short_name,
+                          score_st = test.players$st,
+                          score_cb = test.players$cb,
+                          real_class = test.players$st_or_cb,
+                          pred_class = predict.res)
+show.predict
+
+confusionMatrix(predict.res, test.players$st_or_cb)
+```
+
+
+# Polynomial SVM
+### Train
+```{r}
+poly.svm <- train(formula,
+              data = fifa, method = "svmPoly",
+              trControl = train_control,
+              preProcess = c("center","scale"),
+              tuneLength = 4)
+```
+
+```{r}
+plot(poly.svm)
+```
+
+```{r}
+poly.best.C = poly.svm$bestTune$C
+
+poly.best.res<-as_tibble(poly.svm$results[which.max(poly.svm$results[,2]),])
+poly.best.res
+
+best.poly.svm = poly.svm$finalModel
+best.poly.svm
+```
+
+### Test - Test Set
+```{r}
+predict.res = predict(poly.svm, newdata=fifa.tst)
+
+show.predict = data.frame(name=fifa.tst$short_name,
+                          score_st = fifa.tst$st,
+                          score_cb = fifa.tst$cb,
+                          real_class = fifa.tst$st_or_cb,
+                          pred_class = predict.res)
+head(show.predict)
+
+confusionMatrix(predict.res, fifa.tst$st_or_cb)
+```
+
+### Test - Famous Player
+```{r}
+predict.res = predict(poly.svm, newdata=test.players)
+
+show.predict = data.frame(name=test.players$short_name,
+                          score_st = test.players$st,
+                          score_cb = test.players$cb,
+                          real_class = test.players$st_or_cb,
+                          pred_class = predict.res)
+show.predict
+
+confusionMatrix(predict.res, test.players$st_or_cb)
+```
+
+

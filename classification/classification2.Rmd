@@ -1,0 +1,224 @@
+---
+title: "classification2 - "
+author: "Chen Si (chensi3), Yuchen Cao (yuchenc5)"
+date: "2023-04-30"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+```{r}
+library(caret)
+library(kernlab)
+library(ggplot2)
+library(lattice)
+library(tibble)
+library(glmnet)
+library(pROC)
+```
+
+# Read Data
+
+```{r}
+fifa = read.csv("../dataset/players_20_edited.csv")
+```
+
+```{r}
+best.pos.c = c()
+for (i in 1:dim(fifa)[1]){
+  best.pos.c = c(best.pos.c, which.max(fifa[i,c(67,71,72,76)]))
+}
+fifa$wb_or_b = best.pos.c
+```
+
+
+```{r}
+# colnames(fifa)
+fifa.filtered = fifa[,setdiff(c(3:50,78), c(6:12,14,15))]
+colnames(fifa.filtered)
+```
+
+
+### Set Preferred Foot to be Factor
+```{r}
+fifa.filtered$preferred_foot = as.factor(fifa.filtered$preferred_foot)
+summary(fifa.filtered$preferred_foot)
+
+fifa.filtered$wb_or_b = as.factor(fifa.filtered$wb_or_b)
+levels(fifa.filtered$wb_or_b) = c("wb", "b")
+summary(fifa.filtered$wb_or_b)
+```
+
+
+### Train-Test Split 8-2
+```{r}
+set.seed(432)
+
+N=dim(fifa)[1]
+cat("There are ", N, "players in the dataset\n")
+all.idx=1:N
+
+trn.idx = sample(all.idx, size=round(0.8*N))
+tst.idx = all.idx[is.na(pmatch(all.idx,trn.idx))]
+
+fifa.trn = fifa.filtered[trn.idx,]
+fifa.tst = fifa.filtered[tst.idx,]
+cat("Train Set Size:", dim(fifa.trn)[1], "\n")
+cat("Test Set Size:", dim(fifa.tst)[1], "\n")
+```
+
+# Simple SVM
+### Train
+```{r}
+train_control <- trainControl(method="cv", number=10)
+
+simple.svm <- train(wb_or_b ~ .,
+              data = fifa.trn,
+              method = "svmLinear",
+              trControl = train_control,
+              preProcess = c("center","scale"))
+
+simple.svm
+```
+
+### Test - Test Set
+```{r}
+predict.res = predict(simple.svm, newdata=fifa.tst)
+confusionMatrix(predict.res, fifa.tst$wb_or_b)
+
+real.wb_or_b_num = ifelse(fifa.tst$wb_or_b == "wb", 1, 0)
+pred.wb_or_b_num = ifelse(predict.res == "wb", 1, 0)
+
+roc_obj <- roc(real.wb_or_b_num, pred.wb_or_b_num)
+auc <- auc(roc_obj)
+
+plot(roc_obj, main = paste0("Simple SVM ROC Curve (AUC = ", round(auc, 3), ")"))
+
+```
+
+
+# Tuned Linear SVM 
+### Train
+```{r}
+train_control <- trainControl(method="cv", number=10)
+
+linear.svm <- train(wb_or_b~.,
+              data = fifa.trn, 
+              method = "svmLinear",
+              trControl = train_control,
+              preProcess = c("center","scale"),
+              tuneGrid = expand.grid(C = c(0.01,0.1,0.2,0.5,1,2,5,10,20)))
+
+linear.svm
+```
+
+```{r}
+plot(linear.svm)
+```
+
+```{r}
+linear.best.C = linear.svm$bestTune$C
+
+linear.best.res<-as_tibble(linear.svm$results[which.max(linear.svm$results[,2]),])
+linear.best.res
+
+best.linear.svm = linear.svm$finalModel
+best.linear.svm
+```
+
+### Test - Test Set
+```{r}
+predict.res = predict(linear.svm, newdata=fifa.tst)
+
+confusionMatrix(predict.res, fifa.tst$wb_or_b)
+
+real.wb_or_b_num = ifelse(fifa.tst$wb_or_b == "wb", 1, 0)
+pred.wb_or_b_num = ifelse(predict.res == "wb", 1, 0)
+
+roc_obj <- roc(real.wb_or_b_num, pred.wb_or_b_num)
+auc <- auc(roc_obj)
+
+plot(roc_obj, main = paste0("Linear SVM ROC Curve (AUC = ", round(auc, 3), ")"))
+```
+
+# Radial SVM
+###Train
+```{r}
+train_control <- trainControl(method="cv", number=10)
+
+radial.svm <- train(wb_or_b~.,
+              data = fifa.trn, method = "svmRadial",
+              trControl = train_control,
+              preProcess = c("center","scale"),
+              tuneLength = 6)
+```
+
+```{r}
+plot(radial.svm)
+```
+
+```{r}
+radial.best.C = radial.svm$bestTune$C
+
+radial.best.res<-as_tibble(radial.svm$results[which.max(radial.svm$results[,2]),])
+radial.best.res
+
+best.radial.svm = radial.svm$finalModel
+best.radial.svm
+```
+
+### Test - Test Set
+```{r}
+predict.res = predict(radial.svm, newdata=fifa.tst)
+
+confusionMatrix(predict.res, fifa.tst$wb_or_b)
+
+real.wb_or_b_num = ifelse(fifa.tst$wb_or_b == "wb", 1, 0)
+pred.wb_or_b_num = ifelse(predict.res == "wb", 1, 0)
+
+roc_obj <- roc(real.wb_or_b_num, pred.wb_or_b_num)
+auc <- auc(roc_obj)
+
+plot(roc_obj, main = paste0("Radial SVM ROC Curve (AUC = ", round(auc, 3), ")"))
+```
+
+
+# Polynomial SVM
+### Train
+```{r}
+poly.svm <- train(wb_or_b~.,
+              data = fifa.trn, method = "svmPoly",
+              trControl = train_control,
+              preProcess = c("center","scale"),
+              tuneLength = 4)
+```
+
+```{r}
+plot(poly.svm)
+```
+
+```{r}
+poly.best.C = poly.svm$bestTune$C
+
+poly.best.res<-as_tibble(poly.svm$results[which.max(poly.svm$results[,2]),])
+poly.best.res
+
+best.poly.svm = poly.svm$finalModel
+best.poly.svm
+```
+
+### Test - Test Set
+```{r}
+predict.res = predict(poly.svm, newdata=fifa.tst)
+
+confusionMatrix(predict.res, fifa.tst$wb_or_b)
+
+real.wb_or_b_num = ifelse(fifa.tst$wb_or_b == "wb", 1, 0)
+pred.wb_or_b_num = ifelse(predict.res == "wb", 1, 0)
+
+roc_obj <- roc(real.wb_or_b_num, pred.wb_or_b_num)
+auc <- auc(roc_obj)
+
+plot(roc_obj, main = paste0("Polynomial SVM ROC Curve (AUC = ", round(auc, 3), ")"))
+```
+
+

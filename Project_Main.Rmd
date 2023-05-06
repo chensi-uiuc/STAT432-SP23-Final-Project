@@ -2,10 +2,368 @@
 title: "Project_Main"
 author: "Chen Si (chensi3), Yuchen Cao (yuchenc5)"
 date: "2023-04-30"
-output: pdf_document
+output:
+  pdf_document:
+    latex_engine: xelatex
 ---
+```{r}
+library(caret)
+library(kernlab)
+library(ggplot2)
+library(lattice)
+```
+
+
+```{r}
+fifa = read.csv("dataset/players_20_edited.csv")
+```
+
+```{r}
+colnames(fifa)
+```
+
+```{r}
+fifa$st_or_cb <- with(fifa, ifelse(st > cb, 'ST', 'CB'))
+fifa$st_or_cb = as.factor(fifa$st_or_cb)
+summary(fifa$st_or_cb)
+```
+```{r}
+colnames(fifa)
+```
+```{r}
+test.st.1 = 9 # Kylian Mbappé
+test.st.2 = 35 # Heung-min Son
+test.st.3 = 318 # Wout Weghorst
+
+test.cb.1 = 24 # Gerard Piqué Bernabéu
+test.cb.2 = 73 # Clément Lenglet
+test.cb.3 = 185 # David Luiz
+
+test.lb = 1132 # Kieran Tierney
+test.rb = 2410 # Tomiyasu
+test.lw = 6034 # Gabriel Martinelli
+test.rw = 8971 # Bukayo Saka
+
+test.confus.1 = 296 # Granit Xhaka
+test.confus.2 = 28 # Toni Kroos
+test.confus.3 = 34 # Casemiro
+test.confus.4 = 221 # Thomas Partey
+test.confus.5 = 64 # Frenkie de Jong
+test.confus.6 = 67 # Niklas Süle
+test.confus.7 = 68 # Sergej Milinković-Savić
+test.confus.8 = 69 # Rodri
+
+test.players = fifa[c(test.st.1,test.st.2,test.st.3,
+                      test.cb.1,test.cb.2,test.cb.3,
+                      test.lb,test.rb,test.lw,test.rw,
+                      test.confus.1,test.confus.2,test.confus.3,test.confus.4,
+                      test.confus.5,test.confus.6,test.confus.7,test.confus.8),]
+test.players
+```
 
 
 
 
+## Simple SVM
+```{r}
 
+train_control <- trainControl(method="cv", number=10)
+
+formula = st_or_cb ~ age + height_cm + weight_kg + 
+                    shooting + shooting + passing + dribbling + 
+                    defending + physic + attacking_crossing +
+                    attacking_finishing + attacking_heading_accuracy +
+                    attacking_short_passing + attacking_volleys +
+                    skill_dribbling + skill_curve + skill_fk_accuracy +
+                    skill_long_passing + skill_ball_control +
+                    movement_acceleration + movement_sprint_speed +
+                    movement_agility + movement_reactions +
+                    movement_balance + power_shot_power + 
+                    power_jumping + power_stamina + power_strength +
+                    power_long_shots + mentality_aggression +
+                    mentality_interceptions + mentality_positioning +
+                    mentality_vision + mentality_penalties +
+                    mentality_composure + defending_marking +
+                    defending_standing_tackle + defending_sliding_tackle
+
+svm1 <- train(formula,
+              data = fifa, method = "svmLinear",
+              trControl = train_control,
+              preProcess = c("center","scale"))
+
+svm1
+```
+```{r}
+predict.res = predict(svm1, newdata=test.players)
+show.predict = data.frame(name=test.players$short_name,
+                          score_st = test.players$st,
+                          score_cb = test.players$cb,
+                          real_class = test.players$st_or_cb,
+                          pred_class = predict.res)
+show.predict
+
+confusionMatrix(predict.res, test.players$st_or_cb)
+```
+
+
+
+```{r}
+train_control <- trainControl(method="cv", number=10)
+
+formula = st_or_cb ~ age + height_cm + weight_kg + 
+                    shooting + shooting + passing + dribbling + 
+                    defending + physic + attacking_crossing +
+                    attacking_finishing + attacking_heading_accuracy +
+                    attacking_short_passing + attacking_volleys +
+                    skill_dribbling + skill_curve + skill_fk_accuracy +
+                    skill_long_passing + skill_ball_control +
+                    movement_acceleration + movement_sprint_speed +
+                    movement_agility + movement_reactions +
+                    movement_balance + power_shot_power + 
+                    power_jumping + power_stamina + power_strength +
+                    power_long_shots + mentality_aggression +
+                    mentality_interceptions + mentality_positioning +
+                    mentality_vision + mentality_penalties +
+                    mentality_composure + defending_marking +
+                    defending_standing_tackle + defending_sliding_tackle
+
+svm2 <- train(formula,
+              data = fifa, method = "svmLinear",
+              trControl = train_control,
+              preProcess = c("center","scale"),
+              tuneGrid = expand.grid(C = c(10^(-5:0),seq(2,100, length=10))))
+
+svm2
+```
+```{r}
+plot(svm2)
+```
+
+```{r}
+library(tibble)
+
+linear.best.C = svm2$bestTune$C
+
+linear.best.res<-as_tibble(svm2$results[which.max(svm2$results[,2]),])
+linear.best.res
+
+svm2$finalModel
+```
+```{r}
+predict.res = predict(svm2, newdata=test.players)
+show.predict = data.frame(name=test.players$short_name,
+                          score_st = test.players$st,
+                          score_cb = test.players$cb,
+                          real_class = test.players$st_or_cb,
+                          pred_class = predict.res)
+show.predict
+
+confusionMatrix(predict.res, test.players$st_or_cb)
+```
+
+
+### Radial Kernel
+
+```{r}
+train_control <- trainControl(method="cv", number=10)
+
+formula = st_or_cb ~ age + height_cm + weight_kg + 
+                    shooting + shooting + passing + dribbling + 
+                    defending + physic + attacking_crossing +
+                    attacking_finishing + attacking_heading_accuracy +
+                    attacking_short_passing + attacking_volleys +
+                    skill_dribbling + skill_curve + skill_fk_accuracy +
+                    skill_long_passing + skill_ball_control +
+                    movement_acceleration + movement_sprint_speed +
+                    movement_agility + movement_reactions +
+                    movement_balance + power_shot_power + 
+                    power_jumping + power_stamina + power_strength +
+                    power_long_shots + mentality_aggression +
+                    mentality_interceptions + mentality_positioning +
+                    mentality_vision + mentality_penalties +
+                    mentality_composure + defending_marking +
+                    defending_standing_tackle + defending_sliding_tackle
+
+svm3 <- train(formula,
+              data = fifa, method = "svmRadial",
+              trControl = train_control,
+              preProcess = c("center","scale"),
+              tuneLength = 10)
+```
+
+```{r}
+plot(svm3)
+```
+```{r}
+radial.best.C = svm3$bestTune$C
+
+radial.best.res<-as_tibble(svm3$results[which.max(svm3$results[,2]),])
+radial.best.res
+
+svm3$finalModel
+```
+
+```{r}
+svm4 <- train(formula,
+              data = fifa, method = "svmPoly",
+              trControl = train_control,
+              preProcess = c("center","scale"),
+              tuneLength = 4)
+```
+
+```{r}
+plot(svm4)
+```
+
+```{r}
+poly.best.C = svm4$bestTune$C
+
+poly.best.res<-as_tibble(svm4$results[which.max(svm4$results[,2]),])
+poly.best.res
+
+svm4$finalModel
+```
+
+
+# ST vs CAM
+```{r}
+fifa$st_or_cb <- with(fifa, ifelse(st > cb, 'ST', 'CB'))
+fifa$st_or_cb = as.factor(fifa$st_or_cb)
+summary(fifa$st_or_cb)
+```
+```{r}
+colnames(fifa)
+```
+
+```{r}
+
+train_control <- trainControl(method="cv", number=10)
+
+formula = st_or_cb ~ age + height_cm + weight_kg + 
+                    shooting + shooting + passing + dribbling + 
+                    defending + physic + attacking_crossing +
+                    attacking_finishing + attacking_heading_accuracy +
+                    attacking_short_passing + attacking_volleys +
+                    skill_dribbling + skill_curve + skill_fk_accuracy +
+                    skill_long_passing + skill_ball_control +
+                    movement_acceleration + movement_sprint_speed +
+                    movement_agility + movement_reactions +
+                    movement_balance + power_shot_power + 
+                    power_jumping + power_stamina + power_strength +
+                    power_long_shots + mentality_aggression +
+                    mentality_interceptions + mentality_positioning +
+                    mentality_vision + mentality_penalties +
+                    mentality_composure + defending_marking +
+                    defending_standing_tackle + defending_sliding_tackle
+
+svm5 <- train(formula,
+              data = fifa, method = "svmLinear",
+              trControl = train_control,
+              preProcess = c("center","scale"))
+
+svm5
+```
+
+```{r}
+train_control <- trainControl(method="cv", number=10)
+
+formula = st_or_cb ~ age + height_cm + weight_kg + 
+                    shooting + shooting + passing + dribbling + 
+                    defending + physic + attacking_crossing +
+                    attacking_finishing + attacking_heading_accuracy +
+                    attacking_short_passing + attacking_volleys +
+                    skill_dribbling + skill_curve + skill_fk_accuracy +
+                    skill_long_passing + skill_ball_control +
+                    movement_acceleration + movement_sprint_speed +
+                    movement_agility + movement_reactions +
+                    movement_balance + power_shot_power + 
+                    power_jumping + power_stamina + power_strength +
+                    power_long_shots + mentality_aggression +
+                    mentality_interceptions + mentality_positioning +
+                    mentality_vision + mentality_penalties +
+                    mentality_composure + defending_marking +
+                    defending_standing_tackle + defending_sliding_tackle
+
+svm6 <- train(formula,
+              data = fifa, method = "svmLinear",
+              trControl = train_control,
+              preProcess = c("center","scale"),
+              tuneGrid = expand.grid(C = c(10^(-5:0),seq(2,100, length=10))))
+
+svm6
+```
+
+```{r}
+plot(svm6)
+```
+
+```{r}
+library(tibble)
+
+linear.best.C = svm6$bestTune$C
+
+linear.best.res<-as_tibble(svm6$results[which.max(svm6$results[,2]),])
+linear.best.res
+
+svm6$finalModel
+```
+
+```{r}
+train_control <- trainControl(method="cv", number=10)
+
+formula = st_or_cb ~ age + height_cm + weight_kg + 
+                    shooting + shooting + passing + dribbling + 
+                    defending + physic + attacking_crossing +
+                    attacking_finishing + attacking_heading_accuracy +
+                    attacking_short_passing + attacking_volleys +
+                    skill_dribbling + skill_curve + skill_fk_accuracy +
+                    skill_long_passing + skill_ball_control +
+                    movement_acceleration + movement_sprint_speed +
+                    movement_agility + movement_reactions +
+                    movement_balance + power_shot_power + 
+                    power_jumping + power_stamina + power_strength +
+                    power_long_shots + mentality_aggression +
+                    mentality_interceptions + mentality_positioning +
+                    mentality_vision + mentality_penalties +
+                    mentality_composure + defending_marking +
+                    defending_standing_tackle + defending_sliding_tackle
+
+svm7 <- train(formula,
+              data = fifa, method = "svmRadial",
+              trControl = train_control,
+              preProcess = c("center","scale"),
+              tuneLength = 10)
+```
+
+```{r}
+plot(svm7)
+```
+```{r}
+radial.best.C = svm7$bestTune$C
+
+radial.best.res<-as_tibble(svm7$results[which.max(svm7$results[,2]),])
+radial.best.res
+
+svm7$finalModel
+```
+
+```{r}
+svm8 <- train(formula,
+              data = fifa, method = "svmPoly",
+              trControl = train_control,
+              preProcess = c("center","scale"),
+              tuneLength = 4)
+```
+
+```{r}
+plot(svm8)
+```
+
+```{r}
+poly.best.C = svm8$bestTune$C
+
+poly.best.res<-as_tibble(svm8$results[which.max(svm8$results[,2]),])
+poly.best.res
+
+svm8$finalModel
+```
