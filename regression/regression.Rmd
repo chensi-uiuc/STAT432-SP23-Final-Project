@@ -57,6 +57,8 @@ modelsize=apply(sumleaps$which,1,sum)
 
 plot(modelsize,sumleaps$cp)
 
+sumleaps$cp
+
 which.min(sumleaps$cp)
 
 #model choice:
@@ -172,7 +174,7 @@ value_labels <- c("0–10M", "10–20M", "20–30M", "30–40M", "40–50M","50�
 fifa <- mutate(fifa, `Value Brackets`)
 ```
 
-We see that the high valuations are dominated by players of overall rating 85+ and age between 23 to 33 years.
+We see that the high valuations are dominated by players of overall rating 75+ and age between 23 to 33 years.
 
 ```{r}
 g_age_overall <- ggplot(fifa, aes(age, overall))
