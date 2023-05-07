@@ -1,12 +1,10 @@
 ---
 title             : "Analysis of Player Data from FIFA20"
-shorttitle        : "FIFA20 Analysis"
-
-author: Chen Si (chensi3) & Yuchen Cao (yuchenc5)
-affiliation: UIUC
-
-abstract: |
-  This project focuses on using machine learning techniques to analyze FIFA20 player data with 16,242 non-goalkeeper soccer players. Specifically, Support Vector Machines (SVM) are used for classification to determine whether a player is better suited to play as a striker or defender, and linear and logistic regression are used to explore the relationships between player attributes, overall score, and age. The project also utilizes variable selection methods to improve model accuracy. In conclusion, the project validates the feasibility of soccer player statistical analysis and provides a simple way to perform player performance prediction with quantified player data and basic statistical learning models. 
+author:
+  - Chen Si^[UIUC, chensi3@illinois.edu]
+  - Yuchen Cao^[UIUC, yuchenc5@illinois.edu]
+abstract: 
+"This project focuses on using machine learning techniques to analyze FIFA20 player data with 16,242 non-goalkeeper soccer players. Specifically, Support Vector Machines (SVM) are used for classification to determine whether a player is better suited to play as a striker or defender, and linear and logistic regression are used to explore the relationships between player attributes, overall score, and age. The project also utilizes variable selection methods to improve model accuracy. In conclusion, the project validates the feasibility of soccer player statistical analysis and provides a simple way to perform player performance prediction with quantified player data and basic statistical learning models. "
 
 output:
   pdf_document:
