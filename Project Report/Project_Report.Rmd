@@ -2,8 +2,7 @@
 title             : "Analysis of Player Data from FIFA20"
 shorttitle        : "FIFA20 Analysis"
 
-author: Chen Si (chensi3) & Yuchen Cao (yuchenc5)
-affiliation: UIUC
+author: Chen Si & Yuchen Cao
 
 abstract: |
   This project focuses on using machine learning techniques to analyze FIFA20 player data with 16,242 non-goalkeeper soccer players. Specifically, Support Vector Machines (SVM) are used for classification to determine whether a player is better suited to play as a striker or defender, and linear and logistic regression are used to explore the relationships between player attributes, overall score, and age. The project also utilizes variable selection methods to improve model accuracy. In conclusion, the project validates the feasibility of soccer player statistical analysis and provides a simple way to perform player performance prediction with quantified player data and basic statistical learning models. 
@@ -209,6 +208,8 @@ knitr::include_graphics("figures/Figure 10.png")
 ## Classification
 From the results of the two classifications, we both choose Radial Kernel SVM as the final classifier, and they both achieve a good performance on the test set. Radial Kernel SVM can capture non-linear relationships between the features and the target variable. It’s also effective with high-dimensional data like the FIFA dataset, while it is robust to noise. Therefore, it’s theoretically and practically right to use a Radial Kernel SVM.   
 
+As the classifiers all achieve relatively good accuracies, with ST-CB accuracy all higher than 99% and B-WB accuracy all higher than 95%, and given the no-info rate around 55%, it's convincing that we coudl apply statistical learning methods in classifying the potentil position of a player give his physical data with a high accuracy. Therefore, the real-world target of classifyinga yound player could be realized with SVM models.    
+
 One problem we need to fix in future researches is that we directly train the classifiers on all feature variables, which could lead to overfitting. In the later researches, we might apply variable selection methods such as Lasso or BIC selection before the actual training of models. Other details that might be improved includes a theoretical derivation of to what extent should we tune the parameters so that it’s both mathematically make sense and doesn’t take a lot of computations to run. This would make the training faster and more accurate.  
 
 ## Regression
@@ -235,4 +236,28 @@ FIFA 20 complete player dataset. (n.d.). Www.kaggle.com. Retrieved May 6, 2023, 
 Hastie, T., Friedman, J., & Tibshirani, R. (2001). The Elements of Statistical Learning : Data Mining, Inference, and Prediction. Springer. 
 
 players_20_edited.cs Retrieved May 6, 2023, from https://uofi.app.box.com/s/91m9qt18v7zhxh00d18edv7fx6x95fsw 
+
+# Appendix
+
+## Author Information
+* Chen Si  
+  - Affiliation: University of Illinois, Urbana-Champaign
+  - E-mail: chensi3@illinois.edu
+  - Role: 
+    - Conceptualization;
+    - Data curation; 
+    - Formal Analysis; 
+    - Methodology; 
+    - Writing – original draft; 
+    - Writing – review & editing;
+  
+* Yuchen Cao
+  - Affiliation: University of Illinois, Urbana-Champaign
+  - E-mail: yuchenc5@illinois.edu
+  - Role: 
+    - Conceptualization;
+    - Formal Analysis; 
+    - Methodology; 
+    - Writing – original draft; 
+    - Writing – review & editing;
 
